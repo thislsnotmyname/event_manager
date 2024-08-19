@@ -1,6 +1,7 @@
 require 'erb'
 require 'csv'
 require 'google/apis/civicinfo_v2'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -15,6 +16,37 @@ def clean_phone_number(phone_number)
   else
     'Bad Phone Number'
   end
+end
+
+def find_time_of_registration(regdate)
+  Time.strptime(regdate, '%D %H:%M').hour
+end
+
+def find_day_of_registration(regdate)
+  Time.strptime(regdate, '%D %H:%M').wday
+end
+
+def determine_most_common_hour(array_of_hours)
+  mode(array_of_hours)
+end
+
+def determine_most_common_day_of_the_week(array_of_days)
+  days_of_week = %w[Sunday Monday Tuesday Wednesday Thursday Friday Saturday]
+  mode(array_of_days).map { |day| days_of_week[day] }
+end
+
+def mode(array)
+  mode = {highest: 0, modes: []}
+  array.tally.each do |key, amount|
+    if mode[:modes].empty? || mode[:highest] == amount
+      mode[:modes] << key
+      mode[:highest] = amount
+    elsif mode[:highest] < amount
+      mode[:modes] = [key]
+      mode[:highest] = amount
+    end
+  end
+  mode[:modes]
 end
 
 def legislators_by_zipcode(zip)
@@ -53,13 +85,20 @@ contents = CSV.open(
   header_converters: :symbol
   ) if File.exist?('event_attendees.csv')
 
+registered_times = []
+registered_days = []
+
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
 
-  phone_number = clean_phone_number(row[:homephone])
+  phone_number = clean_phone_number row[:homephone]
 
   zipcode = clean_zipcode row[:zipcode]
+
+  registered_times << find_time_of_registration(row[:regdate])
+
+  registered_days << find_day_of_registration(row[:regdate])
 
   legislators = legislators_by_zipcode(zipcode)
 
@@ -67,3 +106,6 @@ contents.each do |row|
 
   create_thank_you_letter(id, form_letter)
 end
+
+determine_most_common_hour(registered_times)
+determine_most_common_day_of_the_week(registered_days)
