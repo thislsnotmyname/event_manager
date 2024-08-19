@@ -14,7 +14,7 @@ def clean_phone_number(phone_number)
   elsif (phone_number.length == 11 && phone_number[0] == '1')
     phone_number[1..10]
   else
-    'Bad Phone Number'
+    '0000000000'
   end
 end
 
